@@ -1,14 +1,16 @@
+import asyncio
+import datetime
+import logging
+import time
+import traceback
+
+import aiohttp
 from openpyxl import load_workbook
-import grequests
-from datetime import datetime
 from sqlalchemy import Column, Integer, Float, String, DateTime, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 #TODO: Exception handling, logging, settings, 
-
-Base = declarative_base()
-
 
 def process_xlsx(filename):
     wb = load_workbook(filename = filename)
@@ -20,6 +22,42 @@ def process_xlsx(filename):
             urls_to_fetch.append(ws[f'A{n}'].value)
         n += 1
     return urls_to_fetch
+
+urls_to_fetch = process_xlsx('raw_data.xlsx') #TODO: Configurable path
+
+async def get(url):
+    async with aiohttp.ClientSession() as session:
+        try:
+            start = time.time()
+            async with session.request('GET', url) as response:
+                dct = dict()
+                dct['ts'] = datetime.datetime.now()
+                dct['url'] = str(response.url)
+                dct['status_code'] = response.status
+                dct['label'] = 'aaa'
+                dct['response_time'] = "{:.2f}".format((time.time() - start) * 1000)
+                dct['content_length'] = len(await response.read()) if response.status == 200 else None
+                info.append(dct)
+        except aiohttp.client_exceptions.ClientConnectionError as e:
+            pass
+            """{
+                'timestamp': datetime.datetime.now(),
+                'url' : str(url),
+                'error':
+                    {
+                        'exception_type': e.__class__.__name__,
+                        'exception_value': str(e),
+                        'stack_info': traceback.format_exc()
+                    } 
+                }""" #TODO: Log this to .json
+
+info = []
+loop = asyncio.get_event_loop()
+tasks = [asyncio.ensure_future(get(url)) for url in urls_to_fetch]
+loop.run_until_complete(asyncio.wait(tasks))
+
+#Save to db
+Base = declarative_base()
 
 class Monitoring(Base):
 
@@ -33,30 +71,12 @@ class Monitoring(Base):
     status_code = Column('status_code', Integer)
     content_length = Column('content_length', Integer)
 
-engine = create_engine('sqlite:///sqlite3.db')
+engine = create_engine('sqlite:///sqlite3.db')#TODO: Configurable path
 Base.metadata.create_all(bind=engine)
 Session = sessionmaker(bind=engine)
-
-urls_to_fetch = process_xlsx('raw_data.xlsx')
-
-r = (grequests.get(url) for url in urls_to_fetch)
-a = grequests.map(r)
-
-for i in range(len(a)):
-    session = Session()
-    try:
-        monitoring = Monitoring()
-        monitoring.ts = datetime.now()
-        monitoring.url = a[i].url #FIXME
-        monitoring.status_code = a[i].status_code
-        monitoring.label = 'aaa'
-        monitoring.response_time = a[i].elapsed.total_seconds() * 1000
-        monitoring.content_length = len(a[i].content) if monitoring.status_code==200 else None
-
-        session.add(monitoring)
-        session.commit()
-    except:
-        
-        pass
-    finally:
-        session.close()
+db_session = Session()
+for each in info:
+    monitoring = Monitoring(**each)
+    db_session.add(monitoring)
+    db_session.commit()
+db_session.close()
