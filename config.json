@@ -1,0 +1,6 @@
+{
+  "request_timeout": 1000,
+  "error_dump_path": "error_dump.json",
+  "log_path": "log.log",
+  "db_path": "sqlite3.db"
+}
