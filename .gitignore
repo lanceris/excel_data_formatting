@@ -5,3 +5,5 @@ env/
 ~$*.*
 *.db
 other/
+error_dump.json
+log.log

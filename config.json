@@ -5,5 +5,6 @@
     "request_timeout": 200,
     "error_log_path": "error_dump.json",
     "log_path": "log.log",
-    "db_path": "sqlite3.db"
+    "db_path": "sqlite3.db",
+    "urls_amount": 100
 }
