@@ -1,6 +1,9 @@
 {
-  "request_timeout": 1000,
-  "error_dump_path": "error_dump.json",
-  "log_path": "log.log",
-  "db_path": "sqlite3.db"
+    "url_col": "A",
+    "label_col": "B",
+    "fetch_col": "C",
+    "request_timeout": 200,
+    "error_log_path": "error_dump.json",
+    "log_path": "log.log",
+    "db_path": "sqlite3.db"
 }
