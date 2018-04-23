@@ -75,7 +75,7 @@ async def consumer(main_queue, session, responses, errors):
                 main_queue.task_done()
     except Exception as e:
         error = {
-            'timestamp': str(datetime.now().strftime('%d/%m/%Y %H:%M:%S')),
+            'timestamp': str(datetime.now().strftime('%d/%m/%Y %H:%M:%S.%f')),
             'url': str(url),
             'error':
                 {

@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 import utils
 
 config = utils.config
-loggers = [utils.def_log, utils.con_log]
+loggers = (utils.def_log, utils.con_log)
 Base = declarative_base()
 
 
@@ -30,15 +30,15 @@ class Monitoring(Base):
 
 
 @utils.log_time(loggers)
-def process_xlsx(filename):
+def process_xlsx(filename, amount):
     wb = load_workbook(filename=filename)
     ws = wb.active
     n = 1
     urls_to_fetch = []
 
-    config = utils.load_config()
-
     while ws[f'{config["url_col"]}{n}'].value is not None:
+        if len(urls_to_fetch) >= amount:
+            break
         if ws[f'{config["fetch_col"]}{n}'].value == 1:
             urls_to_fetch.append((ws[f'{config["url_col"]}{n}'].value, ws[f'{config["label_col"]}{n}'].value))
         n += 1
@@ -49,15 +49,10 @@ def process_xlsx(filename):
     return urls_to_fetch
 
 
-async def process_urls(session, urls, amount):
+async def process_urls(session, urls_to_fetch):
     main_queue = asyncio.Queue(maxsize=500)
     responses = []
     errors = []
-
-    if len(urls) >= amount:
-        urls_to_fetch = urls[:amount]
-    else:
-        urls_to_fetch = urls
 
     # we init the consumers, as the queues are empty at first,
     # they will be blocked on the main_queue.get()
@@ -65,7 +60,7 @@ async def process_urls(session, urls, amount):
                                                       session=session,
                                                       responses=responses,
                                                       errors=errors))
-                 for _ in range(amount)]
+                 for _ in range(len(urls_to_fetch))]
 
     await utils.producer(queue=main_queue, urls_to_fetch=urls_to_fetch)
     # wait for all items inside the main_queue to get task_done
@@ -129,14 +124,13 @@ def save_to_db(data_list):
 
 async def run(loop):
     try:
-        amount = sys.argv[2]
-    except IndexError:
+        amount = int(sys.argv[2])
+    except (IndexError, ValueError):
         amount = config['urls_amount']
-
-    urls_to_fetch = process_xlsx(sys.argv[1])
+    urls_to_fetch = process_xlsx(sys.argv[1], amount)
 
     async with ClientSession(loop=loop) as session:
-        resps = await process_urls(session, urls=urls_to_fetch, amount=amount)
+        resps = await process_urls(session, urls_to_fetch)
 
     save_to_db(resps)
 
