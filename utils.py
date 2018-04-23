@@ -30,9 +30,9 @@ def log_time(loggers):
             te = time()
             try: # check if loggers is iterable
                 for logger in loggers:
-                    logger.log(logging.INFO, '{}: {:.2f} ms'.format(method.__name__, round((te - ts) * 1000, 2)))
+                    logger.log(logging.INFO, '{}: {} ms'.format(method.__name__, int((te - ts) * 1000)))
             except TypeError: # not iterable
-                loggers.log(logging.INFO, '{}: {:.2f} ms'.format(method.__name__, round((te - ts) * 1000, 2)))
+                loggers.log(logging.INFO, '{}: {} ms'.format(method.__name__, int((te - ts) * 1000)))
             return result
         return timed
     return timeit
@@ -62,7 +62,7 @@ async def consumer(main_queue, session, responses, errors):
     start = time()
     url = await main_queue.get()
     try:
-        async with session.head(url[0], timeout=1) as response:
+        async with session.get(url[0], timeout=config['request_timeout']) as response:
                 dct = dict()
                 dct['ts'] = datetime.now()
                 dct['url'] = str(response.url)
@@ -93,8 +93,6 @@ async def producer(queue, urls_to_fetch):
         # if the queue is full, this line will be blocked
         # until a consumer will finish processing a url
         await queue.put(url)
-
-
 
 
 config = load_config()

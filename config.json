@@ -2,7 +2,7 @@
     "url_col": "A",
     "label_col": "B",
     "fetch_col": "C",
-    "request_timeout": 200,
+    "request_timeout": 5,
     "error_log_path": "error_dump.json",
     "log_path": "log.log",
     "db_path": "sqlite3.db",
